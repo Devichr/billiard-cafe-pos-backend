@@ -3,16 +3,10 @@ import { BilliardTableReservation } from '../types';
 import { queryDB } from '../db';
 
 export class BilliardService {
-    private pool: Pool;
+   private db: Pool;
 
-    constructor() {
-        this.pool = new Pool({
-            user: 'dchr',
-            host: 'localhost',
-            database: 'billiard_cafe',
-            password: 'rajawali',
-            port: 5432,
-        });
+    constructor(db: Pool) {
+        this.db = db;
     }
 
     async createReservation(reservation: Omit<BilliardTableReservation, 'id' | 'status'>): Promise<BilliardTableReservation> {

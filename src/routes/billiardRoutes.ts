@@ -1,8 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { BilliardController } from '../controllers/billiardController';
 
-export const setBilliardRoutes = (app: FastifyInstance) => {
-    const billiardController = new BilliardController();
+import { Pool } from 'pg';
+
+export const setBilliardRoutes = (app: FastifyInstance, db: Pool) => {
+    const billiardController = new BilliardController(db);
 
     app.post('/api/billiard/reservations', billiardController.createReservation.bind(billiardController));
     app.get('/api/billiard/reservations', billiardController.getReservations.bind(billiardController));

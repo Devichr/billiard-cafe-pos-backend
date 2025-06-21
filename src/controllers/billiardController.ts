@@ -1,11 +1,13 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { BilliardService } from '../services/billiardService';
+import { Pool } from 'pg';
+
 
 export class BilliardController {
     private billiardService: BilliardService;
 
-    constructor() {
-        this.billiardService = new BilliardService();
+    constructor(db : Pool) {
+        this.billiardService = new BilliardService(db);
     }
 
     async createReservation(request: FastifyRequest, reply: FastifyReply) {
