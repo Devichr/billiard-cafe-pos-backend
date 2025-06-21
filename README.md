@@ -40,7 +40,7 @@ billiard-cafe-pos-backend
 
 1. **Clone the repository**:
    ```
-   git clone <repository-url>
+   git clone https://github.com/Devichr/billiard-cafe-pos-backend.git
    cd billiard-cafe-pos-backend
    ```
 
