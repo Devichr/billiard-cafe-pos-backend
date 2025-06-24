@@ -1,59 +1,33 @@
-import { Pool } from 'pg';
-
-export interface Light {
-    id?: number;
-    name: string;
-    location: string;
-    status: string;
-    brightness: number;
-    power_consumption: number;
-    created_at?: string;
-    updated_at?: string;
-}
-
-export class Esp32Service {
-    private db: Pool;
-
-    constructor(db: Pool) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Esp32Service = void 0;
+class Esp32Service {
+    constructor(db) {
         this.db = db;
     }
-
-    // Lights CRUD
-    async getLights(): Promise<Light[]> {
-        const result = await this.db.query(
-            'SELECT * FROM lights ORDER BY location, name'
-        );
+    async getLights() {
+        const result = await this.db.query('SELECT * FROM lights ORDER BY location, name');
         return result.rows;
     }
-
-    async getLightById(id: number): Promise<Light | null> {
-        const result = await this.db.query(
-            'SELECT * FROM lights WHERE id = $1',
-            [id]
-        );
+    async getLightById(id) {
+        const result = await this.db.query('SELECT * FROM lights WHERE id = $1', [id]);
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async createLight(light: Omit<Light, 'id' | 'created_at' | 'updated_at'>): Promise<Light> {
-        const result = await this.db.query(
-            `INSERT INTO lights (name, location, status, brightness, power_consumption)
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [
-                light.name,
-                light.location,
-                light.status || 'off',
-                light.brightness || 100,
-                light.power_consumption || 0.0
-            ]
-        );
+    async createLight(light) {
+        const result = await this.db.query(`INSERT INTO lights (name, location, status, brightness, power_consumption)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`, [
+            light.name,
+            light.location,
+            light.status || 'off',
+            light.brightness || 100,
+            light.power_consumption || 0.0
+        ]);
         return result.rows[0];
     }
-
-    async updateLight(id: number, updateData: Partial<Light>): Promise<Light | null> {
+    async updateLight(id, updateData) {
         const fields = [];
         const values = [];
         let paramCount = 1;
-
         if (updateData.name) {
             fields.push(`name = $${paramCount++}`);
             values.push(updateData.name);
@@ -74,60 +48,33 @@ export class Esp32Service {
             fields.push(`power_consumption = $${paramCount++}`);
             values.push(updateData.power_consumption);
         }
-
         if (fields.length === 0) {
             return this.getLightById(id);
         }
-
         fields.push(`updated_at = CURRENT_TIMESTAMP`);
         values.push(id);
-
         const query = `UPDATE lights SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
         const result = await this.db.query(query, values);
-        
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async deleteLight(id: number): Promise<boolean> {
-        const result = await this.db.query(
-            'DELETE FROM lights WHERE id = $1',
-            [id]
-        );
+    async deleteLight(id) {
+        const result = await this.db.query('DELETE FROM lights WHERE id = $1', [id]);
         return (result.rowCount || 0) > 0;
     }
-
-    // Light Control
-    async controlLight(id: number, action: 'on' | 'off'): Promise<Light | null> {
-        const result = await this.db.query(
-            'UPDATE lights SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-            [action, id]
-        );
-        
-        // Simulate ESP32 communication
+    async controlLight(id, action) {
+        const result = await this.db.query('UPDATE lights SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *', [action, id]);
         console.log(`ESP32 Command: Light ${id} turned ${action}`);
-        
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async updateBrightness(id: number, brightness: number): Promise<Light | null> {
-        // Ensure brightness is within valid range
+    async updateBrightness(id, brightness) {
         const validBrightness = Math.max(0, Math.min(100, brightness));
-        
-        const result = await this.db.query(
-            'UPDATE lights SET brightness = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-            [validBrightness, id]
-        );
-        
-        // Simulate ESP32 communication
+        const result = await this.db.query('UPDATE lights SET brightness = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *', [validBrightness, id]);
         console.log(`ESP32 Command: Light ${id} brightness set to ${validBrightness}%`);
-        
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async applyPreset(preset: string): Promise<Light[]> {
+    async applyPreset(preset) {
         let query = '';
-        let params: any[] = [];
-
+        let params = [];
         switch (preset.toLowerCase()) {
             case 'all_on':
                 query = `UPDATE lights SET status = 'on', brightness = 100, updated_at = CURRENT_TIMESTAMP RETURNING *`;
@@ -157,17 +104,11 @@ export class Esp32Service {
             default:
                 throw new Error(`Unknown preset: ${preset}`);
         }
-
         const result = await this.db.query(query, params);
-        
-        // Simulate ESP32 communication
         console.log(`ESP32 Command: Applied preset "${preset}" to all lights`);
-        
         return result.rows;
     }
-
-    // System Status
-    async getSystemStatus(): Promise<any> {
+    async getSystemStatus() {
         const lightsResult = await this.db.query(`
             SELECT 
                 COUNT(*) as total_lights,
@@ -177,9 +118,7 @@ export class Esp32Service {
                 SUM(CASE WHEN status = 'on' THEN power_consumption ELSE 0 END) as total_power_consumption
             FROM lights
         `);
-
         const stats = lightsResult.rows[0];
-
         return {
             esp32_module: {
                 status: 'connected',
@@ -204,8 +143,7 @@ export class Esp32Service {
             }
         };
     }
-
-    async getPowerConsumption(): Promise<any> {
+    async getPowerConsumption() {
         const result = await this.db.query(`
             SELECT 
                 name,
@@ -217,10 +155,8 @@ export class Esp32Service {
             FROM lights
             ORDER BY location, name
         `);
-
         const lights = result.rows;
         const totalConsumption = lights.reduce((sum, light) => sum + parseFloat(light.current_consumption), 0);
-
         return {
             lights: lights.map(light => ({
                 id: light.id,
@@ -235,9 +171,10 @@ export class Esp32Service {
                 total_consumption: totalConsumption.toFixed(2),
                 estimated_cost_per_hour: (totalConsumption * 0.15).toFixed(2),
                 estimated_cost_per_day: (totalConsumption * 0.15 * 24).toFixed(2),
-                carbon_footprint: (totalConsumption * 0.5).toFixed(2) // kg CO2 per kWh
+                carbon_footprint: (totalConsumption * 0.5).toFixed(2)
             }
         };
     }
 }
-
+exports.Esp32Service = Esp32Service;
+//# sourceMappingURL=esp32Service.js.map
