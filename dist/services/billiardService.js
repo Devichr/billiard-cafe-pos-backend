@@ -1,66 +1,37 @@
-import { Pool } from 'pg';
-
-export interface BilliardReservation {
-    id?: number;
-    table_id: string;
-    customer_name: string;
-    start_time: string;
-    end_time: string;
-    status: string;
-    created_at?: string;
-    updated_at?: string;
-}
-
-export class BilliardService {
-    private db: Pool;
-
-    constructor(db: Pool) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BilliardService = void 0;
+class BilliardService {
+    constructor(db) {
         this.db = db;
     }
-
-    async createReservation(reservation: Omit<BilliardReservation, 'id' | 'created_at' | 'updated_at'>): Promise<BilliardReservation> {
-        const result = await this.db.query(
-            `INSERT INTO reservations (table_id, customer_name, start_time, end_time, status)
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [
-                reservation.table_id, 
-                reservation.customer_name, 
-                reservation.start_time, 
-                reservation.end_time, 
-                reservation.status || 'reserved'
-            ]
-        );
+    async createReservation(reservation) {
+        const result = await this.db.query(`INSERT INTO reservations (table_id, customer_name, start_time, end_time, status)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`, [
+            reservation.table_id,
+            reservation.customer_name,
+            reservation.start_time,
+            reservation.end_time,
+            reservation.status || 'reserved'
+        ]);
         return result.rows[0];
     }
-
-    async getReservations(): Promise<BilliardReservation[]> {
-        const result = await this.db.query(
-            'SELECT * FROM reservations ORDER BY created_at DESC'
-        );
+    async getReservations() {
+        const result = await this.db.query('SELECT * FROM reservations ORDER BY created_at DESC');
         return result.rows;
     }
-
-    async getReservationById(id: number): Promise<BilliardReservation | null> {
-        const result = await this.db.query(
-            'SELECT * FROM reservations WHERE id = $1',
-            [id]
-        );
+    async getReservationById(id) {
+        const result = await this.db.query('SELECT * FROM reservations WHERE id = $1', [id]);
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async updateReservationStatus(id: number, status: string): Promise<BilliardReservation | null> {
-        const result = await this.db.query(
-            'UPDATE reservations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-            [status, id]
-        );
+    async updateReservationStatus(id, status) {
+        const result = await this.db.query('UPDATE reservations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *', [status, id]);
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async updateReservation(id: number, updateData: Partial<BilliardReservation>): Promise<BilliardReservation | null> {
+    async updateReservation(id, updateData) {
         const fields = [];
         const values = [];
         let paramCount = 1;
-
         if (updateData.table_id) {
             fields.push(`table_id = $${paramCount++}`);
             values.push(updateData.table_id);
@@ -81,29 +52,20 @@ export class BilliardService {
             fields.push(`status = $${paramCount++}`);
             values.push(updateData.status);
         }
-
         if (fields.length === 0) {
             return this.getReservationById(id);
         }
-
         fields.push(`updated_at = CURRENT_TIMESTAMP`);
         values.push(id);
-
         const query = `UPDATE reservations SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
         const result = await this.db.query(query, values);
-        
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async deleteReservation(id: number): Promise<boolean> {
-        const result = await this.db.query(
-            'DELETE FROM reservations WHERE id = $1',
-            [id]
-        );
+    async deleteReservation(id) {
+        const result = await this.db.query('DELETE FROM reservations WHERE id = $1', [id]);
         return (result.rowCount || 0) > 0;
     }
-
-    async getTableStatus(): Promise<any[]> {
+    async getTableStatus() {
         const result = await this.db.query(`
             SELECT 
                 table_id,
@@ -116,25 +78,22 @@ export class BilliardService {
             GROUP BY table_id
             ORDER BY table_id
         `);
-
-        // Create status for all 8 tables, even if no reservations exist
         const allTables = [];
         for (let i = 1; i <= 8; i++) {
             const tableId = `Table ${i}`;
             const tableData = result.rows.find(row => row.table_id === tableId);
-            
             allTables.push({
                 table_id: tableId,
                 total_reservations: tableData ? parseInt(tableData.total_reservations) : 0,
                 active_reservations: tableData ? parseInt(tableData.active_reservations) : 0,
                 reserved_reservations: tableData ? parseInt(tableData.reserved_reservations) : 0,
                 current_session_start: tableData ? tableData.current_session_start : null,
-                status: tableData && parseInt(tableData.active_reservations) > 0 ? 'occupied' : 
-                       tableData && parseInt(tableData.reserved_reservations) > 0 ? 'reserved' : 'available'
+                status: tableData && parseInt(tableData.active_reservations) > 0 ? 'occupied' :
+                    tableData && parseInt(tableData.reserved_reservations) > 0 ? 'reserved' : 'available'
             });
         }
-
         return allTables;
     }
 }
-
+exports.BilliardService = BilliardService;
+//# sourceMappingURL=billiardService.js.map

@@ -1,25 +1,26 @@
 {
   "name": "billiard-cafe-pos-backend",
   "version": "1.0.0",
-  "main": "src/app.ts",
+  "main": "src/server.ts",
   "scripts": {
-    "start": "ts-node src/server.ts",
+    "start": "node dist/server.js",
     "build": "tsc",
-    "dev": "ts-node-dev src/server.ts"
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "dotenv": "^8.2.0",
-    "fastify": "^3.0.0",
-    "pg": "^8.0.0",
-    "pg-hstore": "^2.3.4"
+    "fastify": "^4.24.3",
+    "@fastify/cors": "^8.4.0",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "@types/axios": "^0.9.36",
-    "@types/node": "^14.0.0",
-    "@types/pg": "^7.14.0",
-    "ts-node": "^9.0.0",
-    "ts-node-dev": "^1.0.0",
-    "typescript": "^4.0.0"
+    "@types/node": "^20.8.7",
+    "@types/pg": "^8.10.7",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2"
   },
   "license": "MIT"
 }
+

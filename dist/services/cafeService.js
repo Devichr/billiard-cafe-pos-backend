@@ -1,80 +1,33 @@
-import { Pool } from 'pg';
-
-export interface MenuItem {
-    id?: number;
-    name: string;
-    description?: string;
-    price: number;
-    category: string;
-    available?: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
-
-export interface Order {
-    id?: number;
-    customer_name: string;
-    table_number?: string;
-    total_amount: number;
-    status: string;
-    created_at?: string;
-    updated_at?: string;
-    items?: OrderItem[];
-}
-
-export interface OrderItem {
-    id?: number;
-    order_id: number;
-    menu_item_id: number;
-    quantity: number;
-    price: number;
-    created_at?: string;
-    menu_item?: MenuItem;
-}
-
-export class CafeService {
-    private db: Pool;
-
-    constructor(db: Pool) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CafeService = void 0;
+class CafeService {
+    constructor(db) {
         this.db = db;
     }
-
-    // Menu Items CRUD
-    async getMenuItems(): Promise<MenuItem[]> {
-        const result = await this.db.query(
-            'SELECT * FROM menu_items WHERE available = true ORDER BY category, name'
-        );
+    async getMenuItems() {
+        const result = await this.db.query('SELECT * FROM menu_items WHERE available = true ORDER BY category, name');
         return result.rows;
     }
-
-    async getMenuItemById(id: number): Promise<MenuItem | null> {
-        const result = await this.db.query(
-            'SELECT * FROM menu_items WHERE id = $1',
-            [id]
-        );
+    async getMenuItemById(id) {
+        const result = await this.db.query('SELECT * FROM menu_items WHERE id = $1', [id]);
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async createMenuItem(menuItem: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> {
-        const result = await this.db.query(
-            `INSERT INTO menu_items (name, description, price, category, available)
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [
-                menuItem.name,
-                menuItem.description || '',
-                menuItem.price,
-                menuItem.category,
-                menuItem.available !== false
-            ]
-        );
+    async createMenuItem(menuItem) {
+        const result = await this.db.query(`INSERT INTO menu_items (name, description, price, category, available)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`, [
+            menuItem.name,
+            menuItem.description || '',
+            menuItem.price,
+            menuItem.category,
+            menuItem.available !== false
+        ]);
         return result.rows[0];
     }
-
-    async updateMenuItem(id: number, updateData: Partial<MenuItem>): Promise<MenuItem | null> {
+    async updateMenuItem(id, updateData) {
         const fields = [];
         const values = [];
         let paramCount = 1;
-
         if (updateData.name) {
             fields.push(`name = $${paramCount++}`);
             values.push(updateData.name);
@@ -95,30 +48,20 @@ export class CafeService {
             fields.push(`available = $${paramCount++}`);
             values.push(updateData.available);
         }
-
         if (fields.length === 0) {
             return this.getMenuItemById(id);
         }
-
         fields.push(`updated_at = CURRENT_TIMESTAMP`);
         values.push(id);
-
         const query = `UPDATE menu_items SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
         const result = await this.db.query(query, values);
-        
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async deleteMenuItem(id: number): Promise<boolean> {
-        const result = await this.db.query(
-            'UPDATE menu_items SET available = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-            [id]
-        );
+    async deleteMenuItem(id) {
+        const result = await this.db.query('UPDATE menu_items SET available = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
         return (result.rowCount || 0) > 0;
     }
-
-    // Orders CRUD
-    async getOrders(): Promise<Order[]> {
+    async getOrders() {
         const result = await this.db.query(`
             SELECT o.*, 
                    json_agg(
@@ -142,8 +85,7 @@ export class CafeService {
         `);
         return result.rows;
     }
-
-    async getOrderById(id: number): Promise<Order | null> {
+    async getOrderById(id) {
         const result = await this.db.query(`
             SELECT o.*, 
                    json_agg(
@@ -165,69 +107,45 @@ export class CafeService {
             WHERE o.id = $1
             GROUP BY o.id
         `, [id]);
-        
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async createOrder(orderData: { customer_name: string; table_number?: string; items: { menu_item_id: number; quantity: number }[] }): Promise<Order> {
+    async createOrder(orderData) {
         const client = await this.db.connect();
-        
         try {
             await client.query('BEGIN');
-
-            // Calculate total amount
             let totalAmount = 0;
             for (const item of orderData.items) {
-                const menuItem = await client.query(
-                    'SELECT price FROM menu_items WHERE id = $1',
-                    [item.menu_item_id]
-                );
+                const menuItem = await client.query('SELECT price FROM menu_items WHERE id = $1', [item.menu_item_id]);
                 if (menuItem.rows.length > 0) {
                     totalAmount += menuItem.rows[0].price * item.quantity;
                 }
             }
-
-            // Create order
-            const orderResult = await client.query(
-                `INSERT INTO orders (customer_name, table_number, total_amount, status)
-                 VALUES ($1, $2, $3, $4) RETURNING *`,
-                [orderData.customer_name, orderData.table_number, totalAmount, 'pending']
-            );
-
+            const orderResult = await client.query(`INSERT INTO orders (customer_name, table_number, total_amount, status)
+                 VALUES ($1, $2, $3, $4) RETURNING *`, [orderData.customer_name, orderData.table_number, totalAmount, 'pending']);
             const order = orderResult.rows[0];
-
-            // Add order items
             for (const item of orderData.items) {
-                const menuItem = await client.query(
-                    'SELECT price FROM menu_items WHERE id = $1',
-                    [item.menu_item_id]
-                );
-                
+                const menuItem = await client.query('SELECT price FROM menu_items WHERE id = $1', [item.menu_item_id]);
                 if (menuItem.rows.length > 0) {
-                    await client.query(
-                        `INSERT INTO order_items (order_id, menu_item_id, quantity, price)
-                         VALUES ($1, $2, $3, $4)`,
-                        [order.id, item.menu_item_id, item.quantity, menuItem.rows[0].price]
-                    );
+                    await client.query(`INSERT INTO order_items (order_id, menu_item_id, quantity, price)
+                         VALUES ($1, $2, $3, $4)`, [order.id, item.menu_item_id, item.quantity, menuItem.rows[0].price]);
                 }
             }
-
             await client.query('COMMIT');
             const createdOrder = await this.getOrderById(order.id);
-            return createdOrder!;
-        } catch (error) {
+            return createdOrder;
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
     }
-
-    async updateOrder(id: number, updateData: Partial<Order>): Promise<Order | null> {
+    async updateOrder(id, updateData) {
         const fields = [];
         const values = [];
         let paramCount = 1;
-
         if (updateData.customer_name) {
             fields.push(`customer_name = $${paramCount++}`);
             values.push(updateData.customer_name);
@@ -240,38 +158,24 @@ export class CafeService {
             fields.push(`status = $${paramCount++}`);
             values.push(updateData.status);
         }
-
         if (fields.length === 0) {
             return this.getOrderById(id);
         }
-
         fields.push(`updated_at = CURRENT_TIMESTAMP`);
         values.push(id);
-
         const query = `UPDATE orders SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
         const result = await this.db.query(query, values);
-        
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async updateOrderStatus(id: number, status: string): Promise<Order | null> {
-        const result = await this.db.query(
-            'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-            [status, id]
-        );
+    async updateOrderStatus(id, status) {
+        const result = await this.db.query('UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *', [status, id]);
         return result.rows.length ? result.rows[0] : null;
     }
-
-    async deleteOrder(id: number): Promise<boolean> {
-        const result = await this.db.query(
-            'DELETE FROM orders WHERE id = $1',
-            [id]
-        );
+    async deleteOrder(id) {
+        const result = await this.db.query('DELETE FROM orders WHERE id = $1', [id]);
         return (result.rowCount || 0) > 0;
     }
-
-    // Order Items
-    async getOrderItems(orderId: number): Promise<OrderItem[]> {
+    async getOrderItems(orderId) {
         const result = await this.db.query(`
             SELECT oi.*, mi.name as menu_item_name, mi.category as menu_item_category
             FROM order_items oi
@@ -279,36 +183,19 @@ export class CafeService {
             WHERE oi.order_id = $1
             ORDER BY oi.created_at
         `, [orderId]);
-        
         return result.rows;
     }
-
-    async addOrderItem(orderId: number, itemData: { menu_item_id: number; quantity: number }): Promise<OrderItem> {
+    async addOrderItem(orderId, itemData) {
         const client = await this.db.connect();
-        
         try {
             await client.query('BEGIN');
-
-            // Get menu item price
-            const menuItem = await client.query(
-                'SELECT price FROM menu_items WHERE id = $1',
-                [itemData.menu_item_id]
-            );
-
+            const menuItem = await client.query('SELECT price FROM menu_items WHERE id = $1', [itemData.menu_item_id]);
             if (menuItem.rows.length === 0) {
                 throw new Error('Menu item not found');
             }
-
             const price = menuItem.rows[0].price;
-
-            // Add order item
-            const result = await client.query(
-                `INSERT INTO order_items (order_id, menu_item_id, quantity, price)
-                 VALUES ($1, $2, $3, $4) RETURNING *`,
-                [orderId, itemData.menu_item_id, itemData.quantity, price]
-            );
-
-            // Update order total
+            const result = await client.query(`INSERT INTO order_items (order_id, menu_item_id, quantity, price)
+                 VALUES ($1, $2, $3, $4) RETURNING *`, [orderId, itemData.menu_item_id, itemData.quantity, price]);
             await client.query(`
                 UPDATE orders 
                 SET total_amount = (
@@ -319,31 +206,23 @@ export class CafeService {
                 updated_at = CURRENT_TIMESTAMP
                 WHERE id = $1
             `, [orderId]);
-
             await client.query('COMMIT');
             return result.rows[0];
-        } catch (error) {
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
     }
-
-    async removeOrderItem(orderId: number, itemId: number): Promise<boolean> {
+    async removeOrderItem(orderId, itemId) {
         const client = await this.db.connect();
-        
         try {
             await client.query('BEGIN');
-
-            // Remove order item
-            const result = await client.query(
-                'DELETE FROM order_items WHERE id = $1 AND order_id = $2',
-                [itemId, orderId]
-            );
-
+            const result = await client.query('DELETE FROM order_items WHERE id = $1 AND order_id = $2', [itemId, orderId]);
             if ((result.rowCount || 0) > 0) {
-                // Update order total
                 await client.query(`
                     UPDATE orders 
                     SET total_amount = COALESCE((
@@ -355,15 +234,17 @@ export class CafeService {
                     WHERE id = $1
                 `, [orderId]);
             }
-
             await client.query('COMMIT');
             return (result.rowCount || 0) > 0;
-        } catch (error) {
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
     }
 }
-
+exports.CafeService = CafeService;
+//# sourceMappingURL=cafeService.js.map
