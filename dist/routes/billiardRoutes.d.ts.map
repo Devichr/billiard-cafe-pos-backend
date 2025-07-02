@@ -1,0 +1,1 @@
+{"version":3,"file":"billiardRoutes.d.ts","sourceRoot":"","sources":["../../src/routes/billiardRoutes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,eAAe,EAAE,MAAM,SAAS,CAAC;AAE1C,OAAO,EAAE,IAAI,EAAE,MAAM,IAAI,CAAC;AAE1B,eAAO,MAAM,iBAAiB,GAAU,KAAK,eAAe,EAAE,SAAS;IAAE,EAAE,EAAE,IAAI,CAAA;CAAE,kBAwBlF,CAAC"}

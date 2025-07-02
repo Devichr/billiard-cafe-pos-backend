@@ -1,0 +1,1 @@
+{"version":3,"file":"esp32Routes.d.ts","sourceRoot":"","sources":["../../src/routes/esp32Routes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,eAAe,EAAE,MAAM,SAAS,CAAC;AAE1C,OAAO,EAAE,IAAI,EAAE,MAAM,IAAI,CAAC;AAE1B,eAAO,MAAM,cAAc,GAAU,KAAK,eAAe,EAAE,SAAS;IAAE,EAAE,EAAE,IAAI,CAAA;CAAE,kBAmB/E,CAAC"}
